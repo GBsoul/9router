@@ -1,3 +1,8 @@
+# Unreleased
+
+## Features
+- **Providers**: add Hermes Local provider — routes through `hermes proxy` (`http://localhost:8645`, no API key needed, custom host supported, live `/v1/models` catalog)
+
 # v0.5.91 (2026-09-26)
 
 ## Features

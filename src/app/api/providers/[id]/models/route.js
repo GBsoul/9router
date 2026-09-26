@@ -3,7 +3,7 @@ import { getProviderConnectionById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 import { GEMINI_CONFIG, ZED_HOSTED_CONFIG } from "@/lib/oauth/constants/oauth";
 import { refreshGoogleToken, refreshCodexToken, updateProviderCredentials } from "@/sse/services/tokenRefresh";
-import { resolveOllamaLocalHost } from "open-sse/config/providers.js";
+import { resolveOllamaLocalHost, resolveHermesLocalHost } from "open-sse/config/providers.js";
 import { getModelsByProviderId } from "open-sse/config/providerModels.js";
 import { resolveKiroModels } from "open-sse/services/kiroModels.js";
 import { resolveKimchiModels } from "open-sse/services/kimchiModels.js";
@@ -514,6 +514,22 @@ const PROVIDER_MODELS_CONFIG = {
       if (!response.ok) {
         const errorText = await response.text();
         console.log("Error fetching models from ollama-local:", errorText);
+        return { error: `Failed to fetch models: ${response.status}`, status: response.status };
+      }
+      const data = await response.json();
+      return { models: parseOpenAIStyleModels(data) };
+    }
+  },
+  "hermes-local": {
+    customResolver: async (connection) => {
+      const url = `${resolveHermesLocalHost(connection)}/v1/models`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log("Error fetching models from hermes-local:", errorText);
         return { error: `Failed to fetch models: ${response.status}`, status: response.status };
       }
       const data = await response.json();

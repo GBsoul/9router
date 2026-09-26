@@ -1,5 +1,5 @@
 import { BaseExecutor } from "./base.js";
-import { PROVIDERS, PROVIDER_OAUTH } from "../config/providers.js";
+import { PROVIDERS, PROVIDER_OAUTH, HERMES_LOCAL_DEFAULT_HOST } from "../config/providers.js";
 import { ANTHROPIC_API_VERSION, OPENAI_COMPAT_BASE, ANTHROPIC_COMPAT_BASE, selectAnthropicBeta, mergeAnthropicBeta } from "../providers/shared.js";
 import { resolveOpenAICompatibleApiType } from "../services/provider.js";
 import { OAUTH_ENDPOINTS, buildKimiHeaders } from "../config/appConstants.js";
@@ -118,6 +118,11 @@ export class DefaultExecutor extends BaseExecutor {
       const baseUrl = credentials?.providerSpecificData?.baseUrl || ANTHROPIC_COMPAT_BASE;
       const normalized = baseUrl.replace(/\/$/, "");
       return `${normalized}/messages`;
+    }
+    // hermes-local: allow custom host/port via providerSpecificData.baseUrl
+    if (this.provider === "hermes-local") {
+      const base = (credentials?.providerSpecificData?.baseUrl?.trim() || HERMES_LOCAL_DEFAULT_HOST).replace(/\/$/, "");
+      return `${base}/v1/chat/completions`;
     }
     // gemini-format: build :streamGenerateContent / :generateContent path
     if (this.config.format === "gemini") {

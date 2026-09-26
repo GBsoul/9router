@@ -9,6 +9,13 @@ export function resolveOllamaLocalHost(credentials) {
   return (raw || OLLAMA_LOCAL_DEFAULT_HOST).replace(/\/$/, "");
 }
 
+export const HERMES_LOCAL_DEFAULT_HOST = "http://localhost:8645";
+
+export function resolveHermesLocalHost(credentials) {
+  const raw = credentials?.providerSpecificData?.baseUrl?.trim();
+  return (raw || HERMES_LOCAL_DEFAULT_HOST).replace(/\/$/, "");
+}
+
 // Region URLs single-source from registry xiaomi-tokenplan.transport
 export const XIAOMI_TOKENPLAN_REGIONS = PROVIDERS["xiaomi-tokenplan"]?.regions || {};
 export const XIAOMI_TOKENPLAN_DEFAULT_REGION = PROVIDERS["xiaomi-tokenplan"]?.defaultRegion;

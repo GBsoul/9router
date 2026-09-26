@@ -162,6 +162,7 @@
     "grok-cli": "gcli",
     "grok-web": "grok-web",
     "groq": "groq",
+    "hermes-local": "hermes-local",
     "hyperbolic": "hyperbolic",
     "iflow": "if",
     "kilo-gateway": "kgw",

@@ -11,6 +11,8 @@ const BULK_PLACEHOLDER = `name1|sk-key1\nname2|sk-key2\nsk-key-only-auto-named`;
 export default function AddApiKeyModal({ isOpen, provider, providerName, isCompatible, isAnthropic, authType, authHint, website, proxyPools, error, existingNames, onSave, onBulkDone, onClose }) {
   const NONE_PROXY_POOL_VALUE = "__none__";
   const isOllamaLocal = provider === "ollama-local";
+  const isHermesLocal = provider === "hermes-local";
+  const isLocalNoKey = isOllamaLocal || isHermesLocal;
   const isCookie = authType === "cookie";
   const isXaiApiKey = provider === "xai" && !isCookie;
   const credentialLabel = isCookie ? "Cookie Value" : provider === "qoder" || provider === "qoder-cn" ? "Personal Access Token (PAT)" : "API Key";
@@ -30,6 +32,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
     priority: 1,
     proxyPoolId: NONE_PROXY_POOL_VALUE,
     ollamaHostUrl: "",
+    hermesHostUrl: "",
   });
   const [azureData, setAzureData] = useState({
     azureEndpoint: "",
@@ -55,6 +58,9 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
   const buildProviderSpecificData = () => {
     if (isOllamaLocal && formData.ollamaHostUrl.trim()) {
       return { baseUrl: formData.ollamaHostUrl.trim() };
+    }
+    if (isHermesLocal && formData.hermesHostUrl.trim()) {
+      return { baseUrl: formData.hermesHostUrl.trim() };
     }
     if (isAzure) {
       return {
@@ -92,9 +98,9 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
 
   const handleSubmit = async () => {
     if (!provider) return;
-    if (!isOllamaLocal && !formData.apiKey) return;
-    if (!isOllamaLocal) {
-      // Non-ollama providers require a name
+    if (!isLocalNoKey && !formData.apiKey) return;
+    if (!isLocalNoKey) {
+      // Non-local providers require a name
       if (!formData.name) return;
     }
     if (isCompatible && !formData.defaultModel.trim()) return;
@@ -120,7 +126,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
       }
 
       await onSave({
-        name: formData.name || (isOllamaLocal ? "Ollama Local" : ""),
+        name: formData.name || (isOllamaLocal ? "Ollama Local" : isHermesLocal ? "Hermes Local" : ""),
         apiKey: formData.apiKey,
         defaultModel: isCompatible ? formData.defaultModel.trim() : undefined,
         priority: formData.priority,
@@ -231,15 +237,15 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
           label="Name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder={isOllamaLocal ? "Ollama Local" : "Production Key"}
+          placeholder={isOllamaLocal ? "Ollama Local" : isHermesLocal ? "Hermes Local" : "Production Key"}
         />
-        {isOllamaLocal && (
+        {isLocalNoKey && (
           <div className="flex gap-2">
             <Input
-              label="Ollama Host URL"
-              value={formData.ollamaHostUrl}
-              onChange={(e) => setFormData({ ...formData, ollamaHostUrl: e.target.value })}
-              placeholder="http://localhost:11434"
+              label={isHermesLocal ? "Hermes Proxy URL" : "Ollama Host URL"}
+              value={isHermesLocal ? formData.hermesHostUrl : formData.ollamaHostUrl}
+              onChange={(e) => setFormData(isHermesLocal ? { ...formData, hermesHostUrl: e.target.value } : { ...formData, ollamaHostUrl: e.target.value })}
+              placeholder={isHermesLocal ? "http://localhost:8645" : "http://localhost:11434"}
               className="flex-1"
             />
             <div className="pt-6">
@@ -249,7 +255,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
             </div>
           </div>
         )}
-        {!isOllamaLocal && (
+        {!isLocalNoKey && (
           <div className="flex gap-2">
             <Input
               label={credentialLabel}
@@ -303,6 +309,11 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
         {isOllamaLocal && (
           <p className="text-xs text-text-muted">
             Leave blank to use <code>http://localhost:11434</code>. For remote Ollama, enter the full host URL (e.g. <code>http://192.168.1.10:11434</code>).
+          </p>
+        )}
+        {isHermesLocal && (
+          <p className="text-xs text-text-muted">
+            Leave blank to use <code>http://localhost:8645</code>. Start it with <code>hermes proxy start</code>. For a remote proxy, enter the full URL.
           </p>
         )}
         {validationResult && (
@@ -393,7 +404,7 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
         </p>
 
         <div className="flex gap-2">
-          <Button onClick={handleSubmit} fullWidth disabled={saving || (!isOllamaLocal && (!formData.name || !formData.apiKey)) || (isCompatible && !formData.defaultModel.trim()) || (isAzure && (!azureData.azureEndpoint || !azureData.deployment || !azureData.organization)) || (isCloudflareAi && !cloudflareData.accountId)}>
+          <Button onClick={handleSubmit} fullWidth disabled={saving || (!isLocalNoKey && (!formData.name || !formData.apiKey)) || (isCompatible && !formData.defaultModel.trim()) || (isAzure && (!azureData.azureEndpoint || !azureData.deployment || !azureData.organization)) || (isCloudflareAi && !cloudflareData.accountId)}>
             {saving ? "Saving..." : "Save"}
           </Button>
           <Button onClick={onClose} variant="ghost" fullWidth>
