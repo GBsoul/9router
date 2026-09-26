@@ -207,6 +207,7 @@
     "grok-cli": "gcli",
     "grok-web": "grok-web",
     "groq": "groq",
+    "hermes-local": "hermes-local",
     "huggingface": "huggingface",
     "hyperbolic": "hyperbolic",
     "iflow": "if",
