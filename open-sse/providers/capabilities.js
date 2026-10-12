@@ -495,12 +495,12 @@ let catalogSource = null;
  */
 export function setCatalogSource(source) {
   catalogSource = source;
-  if (typeof globalThis !== "undefined") globalThis.__9rCatalogSource = source;
+  if (typeof globalThis !== "undefined") globalThis.__aioCatalogSource = source;
 }
 
 function getCatalogSource() {
   if (typeof globalThis === "undefined") return catalogSource;
-  return globalThis.__9rCatalogSource || null;
+  return globalThis.__aioCatalogSource || null;
 }
 
 // Apply the synced catalog + name heuristic on top of a table-resolved result.

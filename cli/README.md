@@ -1,4 +1,4 @@
-# 9Router - FREE AI Router & Token Saver
+# AIO Router - FREE AI Router & Token Saver
 
 **Never stop coding. Save 20-40% tokens with RTK + auto-fallback to FREE & cheap AI models.**
 
@@ -16,7 +16,7 @@
 
 ---
 
-## 🤔 Why 9Router?
+## 🤔 Why AIO Router?
 
 **Stop wasting money, tokens and hitting limits:**
 
@@ -25,7 +25,7 @@
 - ❌ Tool outputs (git diff, grep, ls...) burn tokens fast
 - ❌ Expensive APIs ($20-50/month per provider)
 
-**9Router solves this:**
+**AIO Router solves this:**
 
 - ✅ **RTK Token Saver** - Auto-compress tool_result, save 20-40% tokens
 - ✅ **Maximize subscriptions** - Track quota, use every bit before reset
@@ -40,18 +40,18 @@
 **Option 1 — npm (recommended for desktop):**
 
 ```bash
-npm install -g 9router
-9router
+npm install -g aio-router
+aio-router
 
 # Or run directly with npx
-npx 9router
+npx aio-router
 ```
 
 **Option 2 — Docker (server/VPS):**
 
 ```bash
-docker run -d --name 9router -p 20128:20128 \
-  -v "$HOME/.9router:/app/data" -e DATA_DIR=/app/data \
+docker run -d --name aio-router -p 20128:20128 \
+  -v "$HOME/.aio-router:/app/data" -e DATA_DIR=/app/data \
   decolua/9router:latest
 ```
 
@@ -79,11 +79,11 @@ That's it! Start coding with FREE AI models.
 ## 🚀 CLI Options
 
 ```bash
-9router                    # Start with default settings
-9router --port 8080        # Custom port
-9router --no-browser       # Don't open browser
-9router --skip-update      # Skip auto-update check
-9router --help             # Show all options
+aio-router                    # Start with default settings
+aio-router --port 8080        # Custom port
+aio-router --no-browser       # Don't open browser
+aio-router --skip-update      # Skip auto-update check
+aio-router --help             # Show all options
 ```
 
 **Dashboard**: `http://localhost:20128/dashboard`
@@ -100,9 +100,9 @@ Any tool supporting OpenAI/Claude-compatible API works.
 
 ## 💾 Data Location
 
-- **macOS/Linux**: `~/.9router/db/data.sqlite`
-- **Windows**: `%APPDATA%/9router/db/data.sqlite`
-- **Docker**: `/app/data/db/data.sqlite` (mount `$HOME/.9router` to persist)
+- **macOS/Linux**: `~/.aio-router/db/data.sqlite`
+- **Windows**: `%APPDATA%/aio-router/db/data.sqlite`
+- **Docker**: `/app/data/db/data.sqlite` (mount `$HOME/.aio-router` to persist)
 
 ---
 

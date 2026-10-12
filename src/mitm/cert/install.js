@@ -27,7 +27,14 @@ function getLinuxCertConfig() {
   // Fallback to Debian default if none exist
   return LINUX_CERT_PATHS[0];
 }
-const ROOT_CA_CN = "9Router MITM Root CA";
+const ROOT_CA_CN = "AIO Router MITM Root CA";
+// Pre-rebrand CN/file name. A root CA generated before the rename keeps this CN, and an
+// old install may still be trusted under it — check and remove both so no stale
+// trusted root is left behind.
+const LEGACY_ROOT_CA_CN = "9Router MITM Root CA";
+const ROOT_CA_CNS = [ROOT_CA_CN, LEGACY_ROOT_CA_CN];
+const LINUX_CERT_FILE = "aio-router-root-ca.crt";
+const LEGACY_LINUX_CERT_FILE = "9router-root-ca.crt";
 
 // Get SHA1 fingerprint from cert file using Node.js crypto
 function getCertFingerprint(certPath) {
@@ -50,8 +57,9 @@ function checkCertInstalledMac(certPath) {
     try {
       const fingerprint = getCertFingerprint(certPath).replace(/:/g, "");
       // Verify exact cert bytes match — same CN with different fingerprint = stale cert
-      exec(`security find-certificate -a -c "${ROOT_CA_CN}" -Z /Library/Keychains/System.keychain 2>/dev/null`, { windowsHide: true }, (error, stdout) => {
-        if (error || !stdout) return resolve(false);
+      const find = ROOT_CA_CNS.map((cn) => `security find-certificate -a -c "${cn}" -Z /Library/Keychains/System.keychain 2>/dev/null`).join("; ");
+      exec(`${find}; true`, { windowsHide: true }, (error, stdout) => {
+        if (!stdout) return resolve(false);
         const match = new RegExp(`SHA-1 hash:\\s*${fingerprint}`, "i").test(stdout);
         if (!match) return resolve(false);
         // Cert exists with matching fingerprint — confirm trust policy
@@ -105,7 +113,7 @@ async function installCert(sudoPassword, certPath) {
 
 async function installCertMac(sudoPassword, certPath) {
   // Remove all old certs with same name first to avoid duplicate/stale cert conflict
-  const deleteOld = `security delete-certificate -c "9Router MITM Root CA" /Library/Keychains/System.keychain 2>/dev/null || true`;
+  const deleteOld = `(${ROOT_CA_CNS.map((cn) => `security delete-certificate -c "${cn}" /Library/Keychains/System.keychain 2>/dev/null || true`).join("; ")})`;
   const install = `security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "${certPath}"`;
   try {
     await execWithPassword(`${deleteOld} && ${install}`, sudoPassword);
@@ -120,7 +128,7 @@ async function installCertWindows(certPath) {
   // Auto-elevate via UAC popup if not admin (zero popup if already admin).
   // Delete any stale cert with same CN before adding to avoid duplicates.
   const script = `
-    certutil -delstore Root ${quotePs(ROOT_CA_CN)} 2>$null | Out-Null
+    ${ROOT_CA_CNS.map((cn) => `certutil -delstore Root ${quotePs(cn)} 2>$null | Out-Null`).join("\n    ")}
     $exit = & certutil -addstore Root ${quotePs(certPath)} 2>&1
     if ($LASTEXITCODE -ne 0) { throw "certutil exit $LASTEXITCODE" }
   `;
@@ -143,7 +151,7 @@ async function uninstallCert(sudoPassword, certPath) {
   }
 
   if (IS_WIN) {
-    await uninstallCertWindows();
+    await uninstallCertWindows(certPath);
   } else if (IS_MAC) {
     await uninstallCertMac(sudoPassword, certPath);
   } else {
@@ -162,9 +170,14 @@ async function uninstallCertMac(sudoPassword, certPath) {
   }
 }
 
-async function uninstallCertWindows() {
-  // Auto-elevate via UAC popup if not admin
-  const script = `certutil -delstore Root ${quotePs(ROOT_CA_CN)}`;
+async function uninstallCertWindows(certPath) {
+  // Auto-elevate via UAC popup if not admin. Drop legacy-CN copies quietly, then remove
+  // the installed cert by fingerprint (matches checkCertInstalledWindows, works for either CN).
+  const fingerprint = getCertFingerprint(certPath).replace(/:/g, "");
+  const script = `
+    certutil -delstore Root ${quotePs(LEGACY_ROOT_CA_CN)} 2>$null | Out-Null
+    certutil -delstore Root ${quotePs(fingerprint)}
+  `;
   try {
     await runElevatedPowerShell(script);
     log("🔐 Cert: ✅ uninstalled from Windows Root store");
@@ -175,12 +188,14 @@ async function uninstallCertWindows() {
 
 function checkCertInstalledLinux() {
   const config = getLinuxCertConfig();
-  const certFile = `${config.dir}/9router-root-ca.crt`;
-  return Promise.resolve(fs.existsSync(certFile));
+  return Promise.resolve(
+    [LINUX_CERT_FILE, LEGACY_LINUX_CERT_FILE].some((file) => fs.existsSync(`${config.dir}/${file}`))
+  );
 }
 
 async function updateNssDatabases(certPath, action = 'add') {
-  const certName = "9Router MITM Root CA";
+  const certName = ROOT_CA_CN;
+  const legacyCertName = LEGACY_ROOT_CA_CN;
   
   const script = `
     if ! command -v certutil &> /dev/null; then
@@ -207,6 +222,8 @@ async function updateNssDatabases(certPath, action = 'add') {
 
     for db in $DIRS; do
       if [ -d "$db" ]; then
+        certutil -d sql:"$db" -D -n "${legacyCertName}" 2>/dev/null || \\
+        certutil -d "$db" -D -n "${legacyCertName}" 2>/dev/null || true
         if [ "${action}" = "add" ]; then
           certutil -d sql:"$db" -A -t "C,," -n "${certName}" -i "${certPath}" 2>/dev/null || \\
           certutil -d "$db" -A -t "C,," -n "${certName}" -i "${certPath}" 2>/dev/null || true
@@ -232,10 +249,10 @@ async function installCertLinux(sudoPassword, certPath) {
   }
   
   const config = getLinuxCertConfig();
-  const destFile = `${config.dir}/9router-root-ca.crt`;
+  const destFile = `${config.dir}/${LINUX_CERT_FILE}`;
   
   // Copy to the discovered directory and execute the specific update command
-  const cmd = `cp "${certPath}" "${destFile}" && (${config.cmd} 2>/dev/null || true)`;
+  const cmd = `rm -f "${config.dir}/${LEGACY_LINUX_CERT_FILE}" && cp "${certPath}" "${destFile}" && (${config.cmd} 2>/dev/null || true)`;
   
   try {
     await execWithPassword(cmd, sudoPassword);
@@ -255,8 +272,7 @@ async function uninstallCertLinux(sudoPassword) {
   }
   
   const config = getLinuxCertConfig();
-  const destFile = `${config.dir}/9router-root-ca.crt`;
-  const cmd = `rm -f "${destFile}" && (${config.cmd} 2>/dev/null || true)`;
+  const cmd = `rm -f "${config.dir}/${LINUX_CERT_FILE}" "${config.dir}/${LEGACY_LINUX_CERT_FILE}" && (${config.cmd} 2>/dev/null || true)`;
   
   try {
     await execWithPassword(cmd, sudoPassword);

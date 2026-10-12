@@ -6,6 +6,7 @@ import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
+import { LEGACY_PROVIDER_ID } from "@/shared/constants/brand";
 
 const execAsync = promisify(exec);
 
@@ -44,12 +45,12 @@ const readJson = async (filePath) => {
   }
 };
 
-const has9RouterConfig = (auth) => {
+const hasAioRouterConfig = (auth) => {
   if (!auth) return false;
-  const entry = auth["openai-compatible"] || auth["9router"];
+  const entry = auth["openai-compatible"] || auth["aio-router"] || auth[LEGACY_PROVIDER_ID];
   if (!entry) return false;
   const baseUrl = entry.baseUrl || entry.baseURL || "";
-  return baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1") || baseUrl.includes("9router");
+  return baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1") || baseUrl.includes("aio-router") || baseUrl.includes(LEGACY_PROVIDER_ID);
 };
 
 export async function GET() {
@@ -62,7 +63,7 @@ export async function GET() {
     return NextResponse.json({
       installed: true,
       settings: { auth: auth ? Object.keys(auth) : [] },
-      has9Router: has9RouterConfig(auth),
+      hasAioRouter: hasAioRouterConfig(auth),
       authPath: getAuthPath(),
     });
   } catch (error) {
@@ -94,7 +95,7 @@ export async function POST(request) {
     // Best-effort: update VS Code extension settings
     try {
       const vscode = (await readJson(getVscodeSettingsPath())) || {};
-      vscode["kilocode.customProvider"] = { name: "9Router", baseURL: normalizedBaseUrl, apiKey };
+      vscode["kilocode.customProvider"] = { name: "AIO Router", baseURL: normalizedBaseUrl, apiKey };
       vscode["kilocode.defaultModel"] = model;
       await fs.writeFile(getVscodeSettingsPath(), JSON.stringify(vscode, null, 2));
     } catch { /* VS Code settings not writable */ }
@@ -113,7 +114,8 @@ export async function DELETE() {
       return NextResponse.json({ success: true, message: "No settings file to reset" });
     }
     delete auth["openai-compatible"];
-    delete auth["9router"];
+    delete auth["aio-router"];
+    delete auth[LEGACY_PROVIDER_ID];
     await fs.writeFile(getAuthPath(), JSON.stringify(auth, null, 2));
 
     try {
@@ -125,7 +127,7 @@ export async function DELETE() {
       }
     } catch { /* ignore */ }
 
-    return NextResponse.json({ success: true, message: "9Router settings removed from Kilo Code" });
+    return NextResponse.json({ success: true, message: "AIO Router settings removed from Kilo Code" });
   } catch (error) {
     console.log("Error resetting kilo settings:", error);
     return NextResponse.json({ error: "Failed to reset kilo settings" }, { status: 500 });

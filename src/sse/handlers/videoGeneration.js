@@ -99,6 +99,8 @@ function withConnectionHeader(response, connectionId) {
   const headers = new Headers(response.headers);
   // Video jobs are account-bound upstream — clients echo this back as
   // `x-connection-id` on GET polls so the same account is used.
+  headers.set("x-aio-router-connection-id", String(connectionId));
+  // Pre-rebrand header name, kept for clients that poll with it
   headers.set("x-9router-connection-id", String(connectionId));
   return new Response(response.body, { status: response.status, headers });
 }

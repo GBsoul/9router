@@ -5,6 +5,7 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 import { parseTOML, stringifyTOML } from "confbox";
+import { LEGACY_PROVIDER_ID } from "@/shared/constants/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -73,10 +74,27 @@ const readConfig = async () => {
   }
 };
 
-// Check if config has 9Router settings
-const has9RouterConfig = (config) => {
+// Profiles created before the rebrand point at model_provider = "9router"
+const migrateLegacyProfiles = async (codexDir) => {
+  let files = [];
+  try { files = await fs.readdir(codexDir); } catch { return; }
+  const legacyLine = new RegExp(`^(\\s*model_provider\\s*=\\s*)(["'])${LEGACY_PROVIDER_ID}\\2`, "m");
+  for (const file of files) {
+    if (!file.endsWith(".config.toml") || file === "config.toml") continue;
+    const filePath = path.join(codexDir, file);
+    try {
+      const content = await fs.readFile(filePath, "utf-8");
+      if (legacyLine.test(content)) await fs.writeFile(filePath, content.replace(legacyLine, `$1"aio-router"`));
+    } catch { /* skip unreadable profile */ }
+  }
+};
+
+// Check if config has AIO Router settings
+const hasAioRouterConfig = (config) => {
   if (!config) return false;
-  return config.includes("model_provider = \"9router\"") || config.includes("[model_providers.9router]");
+  return ["aio-router", LEGACY_PROVIDER_ID].some(
+    (id) => config.includes(`model_provider = "${id}"`) || config.includes(`[model_providers.${id}]`)
+  );
 };
 
 // GET - Check codex CLI and read current settings
@@ -97,7 +115,7 @@ export async function GET() {
     return NextResponse.json({
       installed: true,
       config,
-      has9Router: has9RouterConfig(config),
+      hasAioRouter: hasAioRouterConfig(config),
       configPath: getCodexConfigPath(),
     });
   } catch (error) {
@@ -106,7 +124,7 @@ export async function GET() {
   }
 }
 
-// POST - Update 9Router settings (merge with existing config)
+// POST - Update AIO Router settings (merge with existing config)
 export async function POST(request) {
   try {
     const { baseUrl, apiKey, model, subagentModel } = await request.json();
@@ -128,20 +146,24 @@ export async function POST(request) {
       parsed = parsedToWritable(parseTOML(existingConfig));
     } catch { /* No existing config */ }
 
-    // Update only 9Router related fields (api_key goes to auth.json, not config.toml)
+    // Update only AIO Router related fields (api_key goes to auth.json, not config.toml)
     parsed.model = model;
-    parsed.model_provider = "9router";
+    parsed.model_provider = "aio-router";
 
-    // Update or create 9router provider section (no api_key - Codex reads from auth.json)
+    // Update or create aio-router provider section (no api_key - Codex reads from auth.json)
     // Ensure /v1 suffix is added only once
     const normalizedBaseUrl = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
     // Custom providers ignore auth.json - the key must travel as a static header
-    setNestedSection(parsed, "model_providers.9router", {
-      name: "9Router",
+    setNestedSection(parsed, "model_providers.aio-router", {
+      name: "AIO Router",
       base_url: normalizedBaseUrl,
       wire_api: "responses",
       http_headers: { Authorization: `Bearer ${apiKey}` },
     });
+
+    // Drop the pre-rebrand provider and repoint profiles that still reference it
+    deleteNestedSection(parsed, `model_providers.${LEGACY_PROVIDER_ID}`);
+    await migrateLegacyProfiles(codexDir);
 
     // Subagent model is a scalar under [agents]; agents.<role> now means a custom role
     deleteNestedSection(parsed, "agents.subagent");
@@ -162,7 +184,7 @@ export async function POST(request) {
   }
 }
 
-// DELETE - Remove 9Router settings only (keep other settings)
+// DELETE - Remove AIO Router settings only (keep other settings)
 export async function DELETE() {
   try {
     const configPath = getCodexConfigPath();
@@ -182,14 +204,15 @@ export async function DELETE() {
       throw error;
     }
 
-    // Remove 9Router related root fields only if they point to 9router
-    if (parsed.model_provider === "9router") {
+    // Remove AIO Router related root fields only if they point to aio-router
+    if (parsed.model_provider === "aio-router" || parsed.model_provider === LEGACY_PROVIDER_ID) {
       delete parsed.model;
       delete parsed.model_provider;
     }
 
-    // Remove 9router provider section
-    deleteNestedSection(parsed, "model_providers.9router");
+    // Remove aio-router provider section
+    deleteNestedSection(parsed, "model_providers.aio-router");
+    deleteNestedSection(parsed, `model_providers.${LEGACY_PROVIDER_ID}`);
 
     // Remove subagent configuration (both the current key and the legacy role form)
     deleteNestedSection(parsed, "agents.default_subagent_model");
@@ -217,7 +240,7 @@ export async function DELETE() {
 
     return NextResponse.json({
       success: true,
-      message: "9Router settings removed successfully",
+      message: "AIO Router settings removed successfully",
     });
   } catch (error) {
     console.log("Error resetting codex settings:", error);

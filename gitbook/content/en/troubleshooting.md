@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Common issues and solutions when using 9Router.
+Common issues and solutions when using AIO Router.
 
 ---
 
@@ -78,7 +78,7 @@ Common issues and solutions when using 9Router.
 **Solutions:**
 
 1. **Auto-refresh (default):**
-   9Router automatically refreshes tokens. Wait 30 seconds and retry.
+   AIO Router automatically refreshes tokens. Wait 30 seconds and retry.
 
 2. **Manual reconnect:**
    ```
@@ -135,15 +135,15 @@ Common issues and solutions when using 9Router.
 **Problem:** "ECONNREFUSED" or "Cannot connect to localhost:20128".
 
 **Causes:**
-- 9Router not running
+- AIO Router not running
 - Port 20128 blocked
 - Firewall blocking connection
 
 **Solutions:**
 
-1. **Start 9Router:**
+1. **Start AIO Router:**
    ```bash
-   9router
+   aio-router
    ```
    Dashboard should open at http://localhost:3000
 
@@ -175,15 +175,15 @@ Common issues and solutions when using 9Router.
 
 **Causes:**
 - Port 3000 already in use
-- 9Router crashed
+- AIO Router crashed
 - Browser cache issues
 
 **Solutions:**
 
-1. **Check if 9Router is running:**
+1. **Check if AIO Router is running:**
    ```bash
    # Check process
-   ps aux | grep 9router
+   ps aux | grep aio-router
    
    # Check port 3000
    lsof -i :3000
@@ -199,13 +199,13 @@ Common issues and solutions when using 9Router.
    taskkill /PID <PID> /F
    ```
 
-3. **Restart 9Router:**
+3. **Restart AIO Router:**
    ```bash
    # Stop
-   pkill -f 9router
+   pkill -f aio-router
    
    # Start
-   9router
+   aio-router
    ```
 
 4. **Clear browser cache:**
@@ -320,8 +320,8 @@ Common issues and solutions when using 9Router.
 
 2. **Verify key format:**
    ```
-   Correct: 9r_xxxxxxxxxxxxxxxxxxxxxxxx
-   Wrong: Missing 9r_ prefix
+   Correct: aio_xxxxxxxxxxxxxxxxxxxxxxxx
+   Wrong: Missing aio_ prefix
    ```
 
 3. **Check key in CLI config:**
@@ -333,13 +333,13 @@ Common issues and solutions when using 9Router.
    Settings → API Key
    
    # Environment variable
-   export OPENAI_API_KEY="9r_your_key"
+   export OPENAI_API_KEY="aio_your_key"
    ```
 
 4. **Test API key:**
    ```bash
    curl http://localhost:20128/v1/models \
-     -H "Authorization: Bearer 9r_your_key"
+     -H "Authorization: Bearer aio_your_key"
    ```
 
 ---

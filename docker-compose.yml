@@ -1,7 +1,7 @@
 services:
-  9router:
+  aio-router:
     image: decolua/9router:latest
-    container_name: 9router
+    container_name: aio-router
     restart: always
     ports:
       - "20128:20128"

@@ -1,12 +1,12 @@
 # Frequently Asked Questions
 
-Common questions about 9Router.
+Common questions about AIO Router.
 
 ---
 
-## What is 9Router?
+## What is AIO Router?
 
-**9Router is an AI model router that maximizes your subscription value and minimizes costs.**
+**AIO Router is an AI model router that maximizes your subscription value and minimizes costs.**
 
 It intelligently routes requests across multiple AI providers using a 3-tier fallback system:
 1. **Subscription tier** - Maximize Claude Code, Codex, Gemini quotas you already pay for
@@ -23,7 +23,7 @@ It intelligently routes requests across multiple AI providers using a 3-tier fal
 
 ## How does pricing work?
 
-**9Router uses a 3-tier pricing strategy:**
+**AIO Router uses a 3-tier pricing strategy:**
 
 ### Tier 1: Subscription (Maximize First)
 - **Claude Code** (Pro/Max): $20-100/month - 5-hour + weekly quota
@@ -50,9 +50,9 @@ It intelligently routes requests across multiple AI providers using a 3-tier fal
 
 ---
 
-## Is 9Router free?
+## Is AIO Router free?
 
-**Yes, 9Router itself is 100% free and open source.**
+**Yes, AIO Router itself is 100% free and open source.**
 
 **Free tier providers available:**
 - **Gemini CLI** - 180K completions/month (FREE Google account)
@@ -96,7 +96,7 @@ See [providers documentation](providers/subscription.md) for details.
 
 ## Can I use multiple providers?
 
-**Yes! This is 9Router's core feature.**
+**Yes! This is AIO Router's core feature.**
 
 **Combos allow you to chain multiple providers with automatic fallback:**
 
@@ -129,7 +129,7 @@ See [combos documentation](features/combos.md) for examples.
 
 ## How does quota tracking work?
 
-**9Router tracks quota in real-time for all providers:**
+**AIO Router tracks quota in real-time for all providers:**
 
 **Features:**
 - **Token consumption** - Input/output tokens per request
@@ -154,13 +154,13 @@ See [quota tracking documentation](features/quota-tracking.md) for details.
 
 ---
 
-## Does 9Router work with Cursor?
+## Does AIO Router work with Cursor?
 
 **Yes, but Cursor requires a cloud endpoint.**
 
 **Problem:** Cursor IDE doesn't support localhost endpoints.
 
-**Solution:** Use 9Router cloud deployment:
+**Solution:** Use AIO Router cloud deployment:
 
 ```
 Cursor Settings → Models → Advanced:
@@ -192,14 +192,14 @@ See [Cursor integration guide](integration/cursor.md) for details.
 
 ---
 
-## Can I self-host 9Router?
+## Can I self-host AIO Router?
 
-**Yes! 9Router supports multiple deployment options:**
+**Yes! AIO Router supports multiple deployment options:**
 
 ### Localhost (Default)
 ```bash
-npm install -g 9router
-9router
+npm install -g aio-router
+aio-router
 → Dashboard: http://localhost:3000
 → API: http://localhost:20128/v1
 ```
@@ -219,12 +219,12 @@ npm start
 
 ### Docker
 ```bash
-docker build -t 9router .
+docker build -t aio-router .
 docker run -d \
   -p 3000:3000 \
   -e JWT_SECRET="your-secret" \
   -v 9router-data:/app/data \
-  9router
+  aio-router
 ```
 
 ### Cloudflare Workers
@@ -235,7 +235,7 @@ npm run deploy:cloudflare
 
 **Environment variables:**
 - `JWT_SECRET` - **MUST change in production!**
-- `DATA_DIR` - Database storage path (default: `~/.9router`)
+- `DATA_DIR` - Database storage path (default: `~/.aio-router`)
 - `INITIAL_PASSWORD` - Dashboard login (default: `123456`)
 - `NODE_ENV` - Set to `production` for deploy
 
@@ -245,11 +245,11 @@ See [deployment guide](getting-started/installation.md#deployment) for details.
 
 ## Is my data secure?
 
-**Yes, 9Router prioritizes security and privacy:**
+**Yes, AIO Router prioritizes security and privacy:**
 
 **Local storage:**
-- All data stored locally in `~/.9router` (or custom `DATA_DIR`)
-- No data sent to 9Router servers
+- All data stored locally in `~/.aio-router` (or custom `DATA_DIR`)
+- No data sent to AIO Router servers
 - OAuth tokens encrypted with JWT
 
 **No telemetry:**
@@ -268,26 +268,26 @@ See [deployment guide](getting-started/installation.md#deployment) for details.
 - Enable HTTPS for cloud deployments
 - Rotate API keys regularly
 
-**What 9Router stores:**
+**What AIO Router stores:**
 - Provider OAuth tokens (encrypted)
 - API keys (encrypted)
 - Usage statistics (local only)
 - Combo configurations
 
-**What 9Router does NOT store:**
+**What AIO Router does NOT store:**
 - Your prompts or responses
 - Code you generate
 - Personal information
 
 ---
 
-## How do I update 9Router?
+## How do I update AIO Router?
 
 **Update methods depend on installation type:**
 
 ### Global NPM Install
 ```bash
-npm update -g 9router
+npm update -g aio-router
 ```
 
 ### Local Install
@@ -301,23 +301,23 @@ npm start
 
 ### Docker
 ```bash
-docker pull 9router:latest
-docker stop 9router
-docker rm 9router
+docker pull aio-router:latest
+docker stop aio-router
+docker rm aio-router
 docker run -d \
   -p 3000:3000 \
   -v 9router-data:/app/data \
-  9router:latest
+  aio-router:latest
 ```
 
 **Check version:**
 ```bash
-9router --version
+aio-router --version
 ```
 
 **Breaking changes:**
 - Check [CHANGELOG.md](https://github.com/decolua/9router/blob/main/CHANGELOG.md)
-- Backup `~/.9router` before major updates
+- Backup `~/.aio-router` before major updates
 - Review migration guides for major versions
 
 ---

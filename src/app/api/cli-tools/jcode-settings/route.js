@@ -7,6 +7,7 @@ import os from "os";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { parseTOML, stringifyTOML } from "confbox";
+import { LEGACY_PROVIDER_ID } from "@/shared/constants/brand";
 
 const execAsync = promisify(exec);
 
@@ -15,7 +16,14 @@ const getConfigPath = () => path.join(getJcodeConfigDir(), "config.toml");
 
 const getProviderEnvPath = () => {
   const configDir = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
-  return path.join(configDir, "jcode", "provider-9router.env");
+  return path.join(configDir, "jcode", "provider-aio-router.env");
+};
+
+// Pre-rebrand install kept the key in provider-9router.env under config.providers["9router"]
+const removeLegacyProvider = async (config) => {
+  if (config.providers) delete config.providers[LEGACY_PROVIDER_ID];
+  const configDir = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
+  await fs.rm(path.join(configDir, "jcode", `provider-${LEGACY_PROVIDER_ID}.env`), { force: true });
 };
 
 const checkJcodeInstalled = async () => {
@@ -44,12 +52,12 @@ const readConfig = async () => {
   }
 };
 
-const has9RouterConfig = (config) => {
+const hasAioRouterConfig = (config) => {
   if (!config || !config.providers) return false;
 
   const providers = config.providers;
 
-  if (providers["9router"]) return true;
+  if (providers["aio-router"] || providers[LEGACY_PROVIDER_ID]) return true;
 
   for (const [name, provider] of Object.entries(providers)) {
     if (provider.base_url && provider.base_url.includes("localhost:20128")) {
@@ -118,12 +126,12 @@ export async function GET() {
   }
 
   const config = await readConfig();
-  const has9Router = has9RouterConfig(config);
+  const hasAioRouter = hasAioRouterConfig(config);
 
   return NextResponse.json({
     installed: true,
     config,
-    has9Router,
+    hasAioRouter,
     configPath: getConfigPath(),
   });
 }
@@ -149,12 +157,13 @@ export async function POST(request) {
       config.providers = {};
     }
 
-    config.providers["9router"] = {
+    await removeLegacyProvider(config);
+    config.providers["aio-router"] = {
       type: "openai-compatible",
       base_url: normalizedBaseUrl,
       auth: "bearer",
-      api_key_env: "JCODE_9ROUTER_API_KEY",
-      env_file: "provider-9router.env",
+      api_key_env: "JCODE_AIO_ROUTER_API_KEY",
+      env_file: "provider-aio-router.env",
       default_model: models && models.length > 0 ? models[0] : "cc/claude-opus-4-7",
       requires_api_key: true,
     };
@@ -169,12 +178,12 @@ export async function POST(request) {
     await fs.mkdir(jcodeConfigDir, { recursive: true });
 
     const env = await readProviderEnv();
-    env.JCODE_9ROUTER_API_KEY = apiKey;
+    env.JCODE_AIO_ROUTER_API_KEY = apiKey;
     await writeProviderEnv(env);
 
     return NextResponse.json({
       success: true,
-      message: "jcode configured successfully. Use: jcode --provider-profile 9router",
+      message: "jcode configured successfully. Use: jcode --provider-profile aio-router",
       configPath: getConfigPath(),
     });
   } catch (error) {
@@ -194,17 +203,18 @@ export async function DELETE() {
       return NextResponse.json({ success: true, message: "No configuration to remove" });
     }
 
-    delete config.providers["9router"];
+    delete config.providers["aio-router"];
+    await removeLegacyProvider(config);
 
     await writeConfig(config);
 
     const env = await readProviderEnv();
-    delete env.JCODE_9ROUTER_API_KEY;
+    delete env.JCODE_AIO_ROUTER_API_KEY;
     await writeProviderEnv(env);
 
     return NextResponse.json({
       success: true,
-      message: "9router configuration removed from jcode",
+      message: "aio-router configuration removed from jcode",
     });
   } catch (error) {
     console.error("Error removing jcode configuration:", error);

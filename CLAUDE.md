@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-9Router (`9router-app`) — a local AI routing gateway + Next.js dashboard. It exposes one OpenAI-compatible endpoint (`/v1/*`) and routes traffic across 40+ upstream providers with format translation, model-combo fallback, multi-account fallback, OAuth/API-key credential management, token refresh, quota/usage tracking, and optional cloud sync.
+AIO Router (`aio-router-app`) — a local AI routing gateway + Next.js dashboard. It exposes one OpenAI-compatible endpoint (`/v1/*`) and routes traffic across 40+ upstream providers with format translation, model-combo fallback, multi-account fallback, OAuth/API-key credential management, token refresh, quota/usage tracking, and optional cloud sync.
 
 Two published artifacts live in this one repo:
-- The **dashboard + gateway** (root `package.json`, `9router-app`) — the Next.js server that does the actual routing.
-- The **CLI launcher** (`cli/`, published to npm as `9router`) — a separate package that installs/starts the server and manages the tray. It has its own `package.json`, version, and build.
+- The **dashboard + gateway** (root `package.json`, `aio-router-app`) — the Next.js server that does the actual routing.
+- The **CLI launcher** (`cli/`, published to npm as `aio-router`) — a separate package that installs/starts the server and manages the tray. It has its own `package.json`, version, and build.
 
 The code lives in `src/` (Next.js app + dashboard/compat APIs), `open-sse/` (the provider-agnostic routing/translation engine), `cli/` (the launcher package), and `tests/`.
 
@@ -76,13 +76,19 @@ Two authoritative docs already exist — read them before working in these areas
 ### Persistence — IMPORTANT (ARCHITECTURE.md is stale here)
 State is **no longer `db.json`**. It's a SQLite layer under `src/lib/db/` with an adapter fallback chain (`driver.js`): `bun:sqlite` → `better-sqlite3` (optional native dep) → `node:sqlite` (Node ≥22.5) → `sql.js` (pure-JS fallback, always works). `better-sqlite3` is deliberately in `optionalDependencies` so install never fails without build tools.
 - `src/lib/localDb.js` is a **backward-compat shim** re-exporting `src/lib/db/index.js`. New code should import from `@/lib/db/index.js`; per-entity logic lives in `src/lib/db/repos/*`. Schema/migrations in `src/lib/db/migrations/`.
-- DB file location resolves via `src/lib/db/paths.js` (`DATA_DIR`, else `~/.9router/`).
-- Usage/logs (`src/lib/usageDb.js`, `usage.json` + `log.txt`) still live under `~/.9router` and do **not** follow `DATA_DIR`.
+- DB file location resolves via `src/lib/db/paths.js` (`DATA_DIR`, else `~/.aio-router/`).
+- Usage/logs (`src/lib/usageDb.js`, `usage.json` + `log.txt`) still live under `~/.aio-router` and do **not** follow `DATA_DIR`.
 
 ### RTK token saver (`open-sse/rtk/`)
 Pre-translate hooks that compress `tool_result` content in-place to cut tokens. **Fail-open**: any error returns null and leaves the body untouched — never throw out of them. Skips `is_error`/`status:"error"` results to preserve traces.
 
 ## Conventions & gotchas
+
+- **Rebrand (9Router → AIO Router).** Code uses `aio-router` / `AIO Router` / `x-aio-*` / `AIO_ROUTER_*`. Some `9router` strings are kept **on purpose** — don't "finish" the rename on them:
+  - Upstream/external: `9router.com` cloud, `decolua/9router` GitHub/Docker/npm links, the `skills/9router*` dirs + skill ids (served from upstream raw URLs), the "9Router for Github Copilot" VS Code extension, the `9router-data` Docker volume.
+  - Values sent to providers: `X-Msh-Platform`, Cline `X-CLIENT-TYPE`/User-Agent, Zed User-Agent, Cursor protobuf provider, Devin `clientInfo`.
+  - Persisted crypto salts: `9r-cli-auth`, `9router-mitm-pwd` (changing them invalidates stored secrets).
+  - Legacy compat: `~/.9router` → `~/.aio-router` migration (`src/lib/dataDir.js` + `cli/hooks/legacyMigration.js`, keep in sync); CLI tool configs written as `9router`/`9Router` are detected and cleaned on apply/reset (`src/shared/constants/brand.js`); legacy `x-9router-token-saver` / `x-9router-connection-id` headers; `urn:9router:sp` SAML issuer pinned for existing SAML setups; old MITM root CA name/file removed on install/uninstall.
 
 - Plain JavaScript (ESM), no TypeScript. `@/*` path alias → `src/*` (`jsconfig.json`).
 - `custom-server.js` wraps the Next standalone server to derive client IP from the TCP socket and strip attacker-controlled `X-Forwarded-For` — trusting forwarding headers only from a loopback reverse proxy. Preserve this when touching request/IP/rate-limit code.

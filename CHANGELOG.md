@@ -1,5 +1,8 @@
 # Unreleased
 
+## Breaking
+- **Rebrand: 9Router → AIO Router.** npm package `9router` → `aio-router` (command `aio-router`), app `9router-app` → `aio-router-app`, data dir `~/.9router` → `~/.aio-router` (moved automatically on first start), internal headers `x-9r-*` → `x-aio-*`, env `NINEROUTER_*` → `AIO_ROUTER_*` (old `NINEROUTER_PROXY_CLIENT_MAX_BODY_SIZE` / `NINEROUTER_CLI_APP_DIR` still read). CLI tool configs written under the old name are detected and replaced on re-apply; legacy `x-9router-token-saver` request header and `x-9router-connection-id` response header still work; existing SAML setups keep `urn:9router:sp`; old MITM root CA ("9Router MITM Root CA") is removed on cert install/uninstall; old tray autostart entries are replaced.
+
 ## Features
 - **Providers**: add Hermes Local provider — routes through `hermes proxy` (`http://localhost:8645`, no API key needed, custom host supported, live `/v1/models` catalog)
 

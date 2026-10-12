@@ -6,6 +6,7 @@ import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
+import { LEGACY_PROVIDER_ID } from "@/shared/constants/brand";
 
 const execAsync = promisify(exec);
 
@@ -56,19 +57,23 @@ const readSettings = async () => {
   }
 };
 
-// Check if settings has 9Router config
-const has9RouterConfig = (settings) => {
+// Model refs we own — "aio-router/<id>", or "9router/<id>" from before the rebrand
+const isOwnModelRef = (id) =>
+  typeof id === "string" && (id.startsWith("aio-router/") || id.startsWith(`${LEGACY_PROVIDER_ID}/`));
+
+// Check if settings has AIO Router config
+const hasAioRouterConfig = (settings) => {
   if (!settings || !settings.models || !settings.models.providers) return false;
-  return !!settings.models.providers["9router"];
+  return !!(settings.models.providers["aio-router"] || settings.models.providers[LEGACY_PROVIDER_ID]);
 };
 
-// Read per-agent models.json and return current model id (without "9router/" prefix)
+// Read per-agent models.json and return current model id (without "aio-router/" prefix)
 const readAgentModel = async (agentDir) => {
   try {
     const modelsPath = path.join(agentDir, "models.json");
     const content = await fs.readFile(modelsPath, "utf-8");
     const data = JSON.parse(content);
-    const models = data?.providers?.["9router"]?.models;
+    const models = (data?.providers?.["aio-router"] || data?.providers?.[LEGACY_PROVIDER_ID])?.models;
     return models?.[0]?.id || null;
   } catch {
     return null;
@@ -105,7 +110,7 @@ export async function GET() {
       installed: true,
       settings,
       agents: enrichedAgents,
-      has9Router: has9RouterConfig(settings),
+      hasAioRouter: hasAioRouterConfig(settings),
       settingsPath: getOpenClawSettingsPath(),
     });
   } catch (error) {
@@ -125,7 +130,8 @@ const writeAgentModels = async (agentDir, model, baseUrl, apiKey) => {
   } catch { /* No existing */ }
 
   if (!existing.providers) existing.providers = {};
-  existing.providers["9router"] = {
+  delete existing.providers[LEGACY_PROVIDER_ID];
+  existing.providers["aio-router"] = {
     baseUrl,
     apiKey: apiKey || "your_api_key",
     api: "openai-completions",
@@ -134,7 +140,7 @@ const writeAgentModels = async (agentDir, model, baseUrl, apiKey) => {
   await fs.writeFile(modelsPath, JSON.stringify(existing, null, 2));
 };
 
-// POST - Update 9Router settings (merge with existing settings)
+// POST - Update AIO Router settings (merge with existing settings)
 export async function POST(request) {
   try {
     // agentModels: { [agentId]: modelId } for per-agent override
@@ -163,11 +169,11 @@ export async function POST(request) {
     if (!settings.models.providers) settings.models.providers = {};
 
     const normalizedBaseUrl = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
-    const fullModelId = `9router/${model}`;
+    const fullModelId = `aio-router/${model}`;
 
-    // Remove all old 9router/* entries from agents.defaults.models
+    // Remove all old aio-router/* entries from agents.defaults.models
     Object.keys(settings.agents.defaults.models)
-      .filter((k) => k.startsWith("9router/"))
+      .filter(isOwnModelRef)
       .forEach((k) => { delete settings.agents.defaults.models[k]; });
 
     // Update default model
@@ -177,16 +183,16 @@ export async function POST(request) {
     const allModelIds = new Set([model]);
     Object.values(agentModels).forEach((m) => { if (m) allModelIds.add(m); });
 
-    // Add fresh 9router models to allowlist
+    // Add fresh aio-router models to allowlist
     allModelIds.forEach((m) => {
-      settings.agents.defaults.models[`9router/${m}`] = {};
+      settings.agents.defaults.models[`aio-router/${m}`] = {};
     });
 
-    // Remove old 9router model from each agent in agents.list. The
+    // Remove old aio-router model from each agent in agents.list. The
     // model field may be a plain string or `{ primary, fallbacks }`.
     if (settings.agents.list) {
       settings.agents.list = settings.agents.list.map((agent) => {
-        if (resolveAgentModel(agent.model).startsWith("9router/")) {
+        if (isOwnModelRef(resolveAgentModel(agent.model))) {
           const { model: _, ...rest } = agent;
           return rest;
         }
@@ -194,8 +200,9 @@ export async function POST(request) {
       });
     }
 
-    // Update models.providers.9router with all models
-    settings.models.providers["9router"] = {
+    // Update models.providers.aio-router with all models
+    delete settings.models.providers[LEGACY_PROVIDER_ID];
+    settings.models.providers["aio-router"] = {
       baseUrl: normalizedBaseUrl,
       apiKey: apiKey || "your_api_key",
       api: "openai-completions",
@@ -206,7 +213,7 @@ export async function POST(request) {
     if (settings.agents.list) {
       settings.agents.list = settings.agents.list.map((agent) => {
         const agentModel = agentModels[agent.id];
-        if (agentModel) return { ...agent, model: `9router/${agentModel}` };
+        if (agentModel) return { ...agent, model: `aio-router/${agentModel}` };
         return agent;
       });
 
@@ -234,7 +241,7 @@ export async function POST(request) {
   }
 }
 
-// DELETE - Remove 9Router settings only (keep other settings)
+// DELETE - Remove AIO Router settings only (keep other settings)
 export async function DELETE() {
   try {
     const settingsPath = getOpenClawSettingsPath();
@@ -254,9 +261,10 @@ export async function DELETE() {
       throw error;
     }
 
-    // Remove 9Router from models.providers
+    // Remove AIO Router from models.providers
     if (settings.models && settings.models.providers) {
-      delete settings.models.providers["9router"];
+      delete settings.models.providers["aio-router"];
+      delete settings.models.providers[LEGACY_PROVIDER_ID];
       
       // Remove providers object if empty
       if (Object.keys(settings.models.providers).length === 0) {
@@ -264,9 +272,9 @@ export async function DELETE() {
       }
     }
 
-    // Remove 9router models from agents.defaults.models allowlist
+    // Remove aio-router models from agents.defaults.models allowlist
     if (settings.agents?.defaults?.models) {
-      const keysToRemove = Object.keys(settings.agents.defaults.models).filter((k) => k.startsWith("9router/"));
+      const keysToRemove = Object.keys(settings.agents.defaults.models).filter(isOwnModelRef);
       for (const key of keysToRemove) {
         delete settings.agents.defaults.models[key];
       }
@@ -275,8 +283,8 @@ export async function DELETE() {
       }
     }
 
-    // Reset agents.defaults.model.primary if it uses 9router
-    if (settings.agents?.defaults?.model?.primary?.startsWith("9router/")) {
+    // Reset agents.defaults.model.primary if it uses aio-router
+    if (isOwnModelRef(settings.agents?.defaults?.model?.primary)) {
       delete settings.agents.defaults.model.primary;
     }
 
@@ -285,7 +293,7 @@ export async function DELETE() {
 
     return NextResponse.json({
       success: true,
-      message: "9Router settings removed successfully",
+      message: "AIO Router settings removed successfully",
     });
   } catch (error) {
     console.log("Error resetting openclaw settings:", error);
