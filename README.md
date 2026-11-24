@@ -1,7 +1,7 @@
 <div align="center">
   <img src="./images/9router.png?1" alt="9Router Dashboard" width="800"/>
   
-  # 9Router - FREE AI Router & Token Saver
+  # 9Router (GBsoul edition) - AI Router + Hermes Local
   
   **Never stop coding. Save 20-40% tokens with RTK + auto-fallback to FREE & cheap AI models.**
   
@@ -20,6 +20,23 @@
 [🇧🇷 Português (Brasil)](./i18n/README.pt-BR.md) • [🇻🇳 Tiếng Việt](./i18n/README.vi.md) • [🇨🇳 中文](./i18n/README.zh-CN.md) • [🇯🇵 日本語](./i18n/README.ja-JP.md) • [🇷🇺 Русский](./i18n/README.ru.md) • [🇹🇭 ไทย](./i18n/README.th.md) • [🇮🇷 فارسی](./i18n/README.fa_IR.md) • [🇮🇩 Indonesia](./i18n/README.id-ID.md) • [🇪🇸 Español](./i18n/README.es.md) • [🇫🇷 Français](./i18n/README.fr.md)
 
 </div>
+
+---
+
+## 🧩 About this fork
+
+This is **GBsoul's fork** of [decolua/9router](https://github.com/decolua/9router), kept in sync with upstream (currently based on **v0.5.123**) plus our own additions:
+
+| Added in this fork | What it does |
+|---|---|
+| **Hermes Local provider** (`hermes-local`) | Routes requests to a local [Hermes Agent](https://github.com/NousResearch/hermes-agent) through `hermes proxy` — default `http://localhost:8645`, no API key, custom host/port supported, model list loaded live from `/v1/models`. |
+
+**Use Hermes Local:**
+1. Start the proxy: `hermes proxy start`
+2. Dashboard → Providers → **Hermes Local** → Add (leave the URL blank for `http://localhost:8645`, or enter a remote proxy URL)
+3. Use models as `hermes-local/<model>`
+
+Everything else works exactly like upstream 9router — see the docs below. Credit for 9router goes to decolua and contributors (MIT License).
 
 ---
 
